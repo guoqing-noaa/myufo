@@ -83,6 +83,7 @@ class FilterBase : public ObsProcessorBase {
   std::vector<WhereParameters> whereParameters_;
   WhereOperator whereOperator_;
   std::vector<std::unique_ptr<FilterActionParametersBase>> actionsParameters_;
+  boost::optional<NametagParameters> nametag_;
 };
 
 }  // namespace ufo

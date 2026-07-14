@@ -23,6 +23,18 @@
 
 namespace ufo {
 
+/// \brief Parameters for the nametag block
+class NametagParameters : public oops::Parameters {
+  OOPS_CONCRETE_PARAMETERS(NametagParameters, Parameters)
+
+ public:
+  /// Unique identifier for this filter instance in an observation space.
+  oops::RequiredParameter<std::string> filterId{"filter id", this};
+
+  /// Whether to log the flagged observation count using the unique filterID. Default: false.
+  oops::Parameter<bool> logging{"logging", false, this};
+};
+
 /// \brief Parameters controlling the action performed on observations flagged by a filter.
 class FilterActionParameters : public oops::Parameters {
   OOPS_CONCRETE_PARAMETERS(FilterActionParameters, Parameters)
@@ -65,6 +77,9 @@ class FilterParametersBaseWithAbstractActions : public ObsFilterParametersBase {
   /// If set to true, the filter will be executed only after the obs operator (even if it
   /// doesn't require any variables from the GeoVaLs or HofX groups).
   oops::Parameter<bool> deferToPost{"defer to post", false, this};
+
+  /// Optional nametag block for filter identification and logging.
+  oops::OptionalParameter<NametagParameters> nametag{"nametag", this};
 
   /// Return parameters specifying the actions to be performed on observations flagged by the
   /// filter.

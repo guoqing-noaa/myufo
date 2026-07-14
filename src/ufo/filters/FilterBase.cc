@@ -38,7 +38,8 @@ FilterBase::FilterBase(ioda::ObsSpace & os,
     nameMap_(nameMap),
     whereParameters_(parameters.where),
     whereOperator_(parameters.whereOperator),
-    actionsParameters_(parameters.actions())
+    actionsParameters_(parameters.actions()),
+    nametag_(parameters.nametag.value())
 {
   oops::Log::trace() << "FilterBase constructor" << std::endl;
 
@@ -123,6 +124,20 @@ void FilterBase::doFilter() {
 
 // Apply filter
   this->applyFilter(apply, vars, flagged);
+
+// Log flagged count if nametag is specified and logging enabled
+  if (nametag_ != boost::none && nametag_->logging) {
+    for (size_t jv = 0; jv < nvars; ++jv) {
+      size_t nflagged = 0;
+      for (size_t jobs = 0; jobs < obsdb_.nlocs(); ++jobs) {
+        if (flagged[jv][jobs]) ++nflagged;
+      }
+      oops::Log::info() << "FilterID [" << nametag_->filterId.value()
+                        << "] " << vars.variable(jv).fullName()
+                        << ": flagged " << nflagged << " out of "
+                        << obsdb_.nlocs() << " obs" << std::endl;
+    }
+  }
 
 // Take actions
   for (const std::unique_ptr<FilterActionParametersBase> &actionParameters : actionsParameters_) {
