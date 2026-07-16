@@ -12,6 +12,7 @@
 
 #include "eckit/config/Configuration.h"
 
+#include "ioda/distribution/Accumulator.h"
 #include "ioda/ObsDataVector.h"
 #include "ioda/ObsSpace.h"
 #include "ioda/ObsVector.h"
@@ -125,17 +126,41 @@ void FilterBase::doFilter() {
 // Apply filter
   this->applyFilter(apply, vars, flagged);
 
-// Log flagged count if nametag is specified and logging enabled
+// Log flagged count if nametag is specified and logging enabled (global MPI-reduced counts)
   if (nametag_ != boost::none && nametag_->logging) {
+    std::unique_ptr<ioda::Accumulator<std::vector<size_t>>> accumulator =
+        obsdb_.distribution()->createAccumulator<size_t>(nvars * 2);
     for (size_t jv = 0; jv < nvars; ++jv) {
-      size_t nflagged = 0;
       for (size_t jobs = 0; jobs < obsdb_.nlocs(); ++jobs) {
-        if (flagged[jv][jobs]) ++nflagged;
+        accumulator->addTerm(jobs, jv * 2 + 1, 1);  // total count
+        if (flagged[jv][jobs])
+          accumulator->addTerm(jobs, jv * 2, 1);    // flagged count
       }
-      oops::Log::info() << "FilterID [" << nametag_->filterId.value()
-                        << "] " << vars.variable(jv).fullName()
-                        << ": flagged " << nflagged << " out of "
-                        << obsdb_.nlocs() << " obs" << std::endl;
+    }
+    const std::vector<size_t> counts = accumulator->computeResult();
+    if (obsdb_.comm().rank() == 0) {
+      for (size_t jv = 0; jv < nvars; ++jv) {
+        oops::Log::info() << "FilterID [" << nametag_->filterId.value()
+                          << "] " << vars.variable(jv).fullName()
+                          << " loop" << getIteration()
+                          << ": flagged " << counts[jv * 2] << " out of "
+                          << counts[jv * 2 + 1] << " obs" << std::endl;
+      }
+    }
+  }
+
+// Write DiagnosticFlags if nametag is specified and diagnostic flag enabled
+  if (nametag_ != boost::none && nametag_->diagnosticFlag) {
+    const std::string & filterId = nametag_->filterId.value();
+    const std::vector<std::string> dimList{"Location"};
+    for (size_t jv = 0; jv < nvars; ++jv) {
+      std::vector<bool> diagFlag(obsdb_.nlocs(), false);
+      for (size_t jobs = 0; jobs < obsdb_.nlocs(); ++jobs) {
+        diagFlag[jobs] = flagged[jv][jobs];
+      }
+      obsdb_.put_db("DiagnosticFlags/" + filterId + std::to_string(getIteration()),
+                    vars.variable(jv).variable(),
+                    diagFlag, dimList);
     }
   }
 

@@ -33,6 +33,10 @@ class NametagParameters : public oops::Parameters {
 
   /// Whether to log the flagged observation count using the unique filterID. Default: false.
   oops::Parameter<bool> logging{"logging", false, this};
+
+  /// Whether to write per-observation flagged results to DiagnosticFlags/<filterId>/<varname>
+  /// in the output ioda file. Default: false.
+  oops::Parameter<bool> diagnosticFlag{"diagnostic flag", false, this};
 };
 
 /// \brief Parameters controlling the action performed on observations flagged by a filter.
