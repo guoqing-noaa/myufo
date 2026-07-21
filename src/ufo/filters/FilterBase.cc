@@ -141,8 +141,9 @@ void FilterBase::doFilter() {
     if (obsdb_.comm().rank() == 0) {
       for (size_t jv = 0; jv < nvars; ++jv) {
         oops::Log::info() << "FilterID [" << nametag_->filterId.value()
-                          << "] " << vars.variable(jv).fullName()
+                          << "] " << obsdb_.obsname()
                           << " loop" << getIteration()
+                          << " " << vars.variable(jv).fullName()
                           << ": flagged " << counts[jv * 2] << " out of "
                           << counts[jv * 2 + 1] << " obs" << std::endl;
       }
