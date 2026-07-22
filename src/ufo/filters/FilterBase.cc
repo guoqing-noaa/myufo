@@ -22,6 +22,7 @@
 #include "ufo/filters/actions/FilterAction.h"
 #include "ufo/filters/GenericFilterParameters.h"
 #include "ufo/filters/processWhere.h"
+#include "ufo/filters/QCflags.h"
 #include "ufo/GeoVaLs.h"
 #include "ufo/ObsDiagnostics.h"
 
@@ -129,12 +130,16 @@ void FilterBase::doFilter() {
 // Log flagged count if nametag is specified and logging enabled (global MPI-reduced counts)
   if (nametag_ != boost::none && nametag_->logging) {
     std::unique_ptr<ioda::Accumulator<std::vector<size_t>>> accumulator =
-        obsdb_.distribution()->createAccumulator<size_t>(nvars * 2);
+        obsdb_.distribution()->createAccumulator<size_t>(nvars * 3);
     for (size_t jv = 0; jv < nvars; ++jv) {
+      size_t iv = flags_.varnames().find(vars.variable(jv).variable());
       for (size_t jobs = 0; jobs < obsdb_.nlocs(); ++jobs) {
-        accumulator->addTerm(jobs, jv * 2 + 1, 1);  // total count
-        if (flagged[jv][jobs])
-          accumulator->addTerm(jobs, jv * 2, 1);    // flagged count
+        accumulator->addTerm(jobs, jv * 3 + 2, 1);  // total count
+        if (flagged[jv][jobs]) {
+          accumulator->addTerm(jobs, jv * 3, 1);    // flagged count
+          if (flags_[iv][jobs] == QCflags::pass)
+            accumulator->addTerm(jobs, jv * 3 + 1, 1);  // newly flagged count
+        }
       }
     }
     const std::vector<size_t> counts = accumulator->computeResult();
@@ -144,8 +149,10 @@ void FilterBase::doFilter() {
                           << "] " << obsdb_.obsname()
                           << " loop" << getIteration()
                           << " " << vars.variable(jv).fullName()
-                          << ": flagged " << counts[jv * 2] << " out of "
-                          << counts[jv * 2 + 1] << " obs" << std::endl;
+                          << ": flagged " << counts[jv * 3]
+                          << " (newly " << counts[jv * 3 + 1] << ")"
+                          << " out of "
+                          << counts[jv * 3 + 2] << " obs" << std::endl;
       }
     }
   }
