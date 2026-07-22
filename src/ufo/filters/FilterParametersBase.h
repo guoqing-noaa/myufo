@@ -28,8 +28,8 @@ class NametagParameters : public oops::Parameters {
   OOPS_CONCRETE_PARAMETERS(NametagParameters, Parameters)
 
  public:
-  /// Unique identifier for this filter instance in an observation space.
-  oops::RequiredParameter<std::string> filterId{"filter id", this};
+  oops::RequiredParameter<std::string> filterId{"filter id", 
+         "Unique identifier for this filter instance in an observation space.", this};
 
   /// Whether to log the flagged observation count using the unique filterID. Default: false.
   oops::Parameter<bool> logging{"logging", false, this};
