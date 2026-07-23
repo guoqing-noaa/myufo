@@ -41,7 +41,7 @@ FilterBase::FilterBase(ioda::ObsSpace & os,
     whereParameters_(parameters.where),
     whereOperator_(parameters.whereOperator),
     actionsParameters_(parameters.actions()),
-    nametag_(parameters.nametag.value())
+    identifier_(parameters.identifier.value())
 {
   oops::Log::trace() << "FilterBase constructor" << std::endl;
 
@@ -127,49 +127,14 @@ void FilterBase::doFilter() {
 // Apply filter
   this->applyFilter(apply, vars, flagged);
 
-// Log flagged count if nametag is specified and logging enabled (global MPI-reduced counts)
-  if (nametag_ != boost::none && nametag_->logging) {
-    std::unique_ptr<ioda::Accumulator<std::vector<size_t>>> accumulator =
-        obsdb_.distribution()->createAccumulator<size_t>(nvars * 3);
-    for (size_t jv = 0; jv < nvars; ++jv) {
-      size_t iv = flags_.varnames().find(vars.variable(jv).variable());
-      for (size_t jobs = 0; jobs < obsdb_.nlocs(); ++jobs) {
-        accumulator->addTerm(jobs, jv * 3 + 2, 1);  // total count
-        if (flagged[jv][jobs]) {
-          accumulator->addTerm(jobs, jv * 3, 1);    // flagged count
-          if (flags_[iv][jobs] == QCflags::pass)
-            accumulator->addTerm(jobs, jv * 3 + 1, 1);  // newly flagged count
-        }
-      }
-    }
-    const std::vector<size_t> counts = accumulator->computeResult();
-    if (obsdb_.comm().rank() == 0) {
-      for (size_t jv = 0; jv < nvars; ++jv) {
-        oops::Log::info() << "FilterID [" << nametag_->filterId.value()
-                          << "] " << obsdb_.obsname()
-                          << " loop" << getIteration()
-                          << " " << vars.variable(jv).fullName()
-                          << ": flagged " << counts[jv * 3]
-                          << " (newly " << counts[jv * 3 + 1] << ")"
-                          << " out of "
-                          << counts[jv * 3 + 2] << " obs" << std::endl;
-      }
-    }
+// Log flagged count if identifier is specified and logging enabled
+  if (identifier_ != boost::none && identifier_->logging) {
+    this->outputIdentifierLogging(vars, nvars, flagged);
   }
 
-// Write DiagnosticFlags if nametag is specified and diagnostic flag enabled
-  if (nametag_ != boost::none && nametag_->diagnosticFlag) {
-    const std::string & filterId = nametag_->filterId.value();
-    const std::vector<std::string> dimList{"Location"};
-    for (size_t jv = 0; jv < nvars; ++jv) {
-      std::vector<bool> diagFlag(obsdb_.nlocs(), false);
-      for (size_t jobs = 0; jobs < obsdb_.nlocs(); ++jobs) {
-        diagFlag[jobs] = flagged[jv][jobs];
-      }
-      obsdb_.put_db("DiagnosticFlags/" + filterId + std::to_string(getIteration()),
-                    vars.variable(jv).variable(),
-                    diagFlag, dimList);
-    }
+// Write DiagnosticFlags if identifier is specified and diagnostic flag enabled
+  if (identifier_ != boost::none && identifier_->diagnosticFlag) {
+    this->writeIdentifierDiagnosticFlags(vars, nvars, flagged);
   }
 
 // Take actions
@@ -180,6 +145,52 @@ void FilterBase::doFilter() {
 
 // Done
   oops::Log::trace() << "FilterBase doFilter complete" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+void FilterBase::outputIdentifierLogging(
+    const Variables & vars, size_t nvars,
+    const std::vector<std::vector<bool>> & flagged) const {
+  std::unique_ptr<ioda::Accumulator<std::vector<size_t>>> accumulator =
+      obsdb_.distribution()->createAccumulator<size_t>(nvars * 3);
+  for (size_t jv = 0; jv < nvars; ++jv) {
+    const size_t iv = flags_.varnames().find(vars.variable(jv).variable());
+    for (size_t jobs = 0; jobs < obsdb_.nlocs(); ++jobs) {
+      accumulator->addTerm(jobs, jv * 3 + 2, 1);  // total count
+      if (flagged[jv][jobs]) {
+        accumulator->addTerm(jobs, jv * 3, 1);    // flagged count
+        if (flags_[iv][jobs] == QCflags::pass)
+          accumulator->addTerm(jobs, jv * 3 + 1, 1);  // newly flagged count
+      }
+    }
+  }
+  const std::vector<size_t> counts = accumulator->computeResult();
+  for (size_t jv = 0; jv < nvars; ++jv) {
+    oops::Log::info() << "FilterID [" << identifier_->name.value()
+                      << "] " << obsdb_.obsname()
+                      << " outerLoop" << getIteration()
+                      << " " << vars.variable(jv).fullName()
+                      << ": flagged " << counts[jv * 3]
+                      << " (newly " << counts[jv * 3 + 1] << ")"
+                      << " out of "
+                      << counts[jv * 3 + 2] << " obs" << std::endl;
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+void FilterBase::writeIdentifierDiagnosticFlags(
+    const Variables & vars, size_t nvars,
+    const std::vector<std::vector<bool>> & flagged) const {
+  const std::string & filterId = identifier_->name.value();
+  const std::vector<std::string> dimList{"Location"};
+  for (size_t jv = 0; jv < nvars; ++jv) {
+    std::vector<bool> diagFlag(flagged[jv]);
+    obsdb_.put_db("DiagnosticFlags/" + filterId + std::to_string(getIteration()),
+                  vars.variable(jv).variable(),
+                  diagFlag, dimList);
+  }
 }
 
 // -----------------------------------------------------------------------------

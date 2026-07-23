@@ -80,10 +80,15 @@ class FilterBase : public ObsProcessorBase {
                            std::vector<std::vector<bool>> &) const = 0;
   virtual int qcFlag() const = 0;
 
+  void outputIdentifierLogging(const Variables & vars, size_t nvars,
+                            const std::vector<std::vector<bool>> & flagged) const;
+  void writeIdentifierDiagnosticFlags(const Variables & vars, size_t nvars,
+                                   const std::vector<std::vector<bool>> & flagged) const;
+
   std::vector<WhereParameters> whereParameters_;
   WhereOperator whereOperator_;
   std::vector<std::unique_ptr<FilterActionParametersBase>> actionsParameters_;
-  boost::optional<NametagParameters> nametag_;
+  boost::optional<IdentifierParameters> identifier_;
 };
 
 }  // namespace ufo
