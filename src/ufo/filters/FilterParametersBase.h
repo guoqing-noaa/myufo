@@ -28,7 +28,7 @@ class IdentifierParameters : public oops::Parameters {
   OOPS_CONCRETE_PARAMETERS(IdentifierParameters, Parameters)
 
  public:
-  oops::RequiredParameter<std::string> name{"name", 
+  oops::RequiredParameter<std::string> name{"name",
          "Unique identifier name for this filter instance in an observation space.", this};
 
   /// Whether to log the flagged observation count using the unique identifier. Default: false.
