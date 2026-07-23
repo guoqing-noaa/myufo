@@ -114,6 +114,9 @@ set ( filters_files
       StuckCheck.cc
       StuckCheck.h
       StuckCheckParameters.h
+      Percentile.cc
+      Percentile.h
+      PercentileParameters.h
       SuperOb.h
       SuperOb.cc
       SuperRefractionCheckImpactParameter.h
@@ -181,6 +184,8 @@ set ( filters_files
       actions/PassivateObs.h
       actions/ReduceObsSpace.cc
       actions/ReduceObsSpace.h
+      actions/RecordActionUtils.cc
+      actions/RecordActionUtils.h
       actions/RejectObs.cc
       actions/RejectObs.h
       actions/ROobserrInflation.cc
