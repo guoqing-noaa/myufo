@@ -28,6 +28,9 @@
 
 namespace ufo {
 
+// Static member definition
+std::map<std::string, std::vector<bool>> FilterBase::reevalFlagStore_;
+
 // -----------------------------------------------------------------------------
 
 FilterBase::FilterBase(ioda::ObsSpace & os,
@@ -124,6 +127,11 @@ void FilterBase::doFilter() {
   std::vector<std::vector<bool>> flagged(nvars);
   for (size_t jv = 0; jv < flagged.size(); ++jv) flagged[jv].resize(obsdb_.nlocs());
 
+// Reset previous rejections if reevaluation is enabled and iteration > 0
+  if (identifier_ != boost::none && identifier_->reevaluate && getIteration() > 0) {
+    this->resetPreviousRejections(vars, nvars);
+  }
+
 // Apply filter
   this->applyFilter(apply, vars, flagged);
 
@@ -135,6 +143,11 @@ void FilterBase::doFilter() {
 // Write DiagnosticFlags if identifier is specified and diagnostic flag enabled
   if (identifier_ != boost::none && identifier_->diagnosticFlag) {
     this->writeIdentifierDiagnosticFlags(vars, nvars, flagged);
+  }
+
+// Store reevaluation flags in memory if reevaluate is enabled
+  if (identifier_ != boost::none && identifier_->reevaluate) {
+    this->storeReevalFlags(vars, nvars, flagged);
   }
 
 // Take actions
@@ -190,6 +203,58 @@ void FilterBase::writeIdentifierDiagnosticFlags(
     obsdb_.put_db("DiagnosticFlags/" + filterId + std::to_string(getIteration()),
                   vars.variable(jv).variable(),
                   diagFlag, dimList);
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+void FilterBase::storeReevalFlags(
+    const Variables & vars, size_t nvars,
+    const std::vector<std::vector<bool>> & flagged) const {
+  const std::string & filterId = identifier_->name.value();
+  for (size_t jv = 0; jv < nvars; ++jv) {
+    const std::string key = obsdb_.obsname() + "/" + filterId + "/" +
+                            std::to_string(getIteration()) + "/" +
+                            vars.variable(jv).variable();
+    reevalFlagStore_[key] = std::vector<bool>(flagged[jv].begin(), flagged[jv].end());
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+void FilterBase::resetPreviousRejections(const Variables & vars, size_t nvars) {
+  const std::string & filterId = identifier_->name.value();
+  const int myQcFlag = this->qcFlag();
+
+  std::unique_ptr<ioda::Accumulator<std::vector<size_t>>> accumulator =
+      obsdb_.distribution()->createAccumulator<size_t>(nvars);
+
+  for (size_t jv = 0; jv < nvars; ++jv) {
+    const size_t iv = flags_.varnames().find(vars.variable(jv).variable());
+    const std::string key = obsdb_.obsname() + "/" + filterId + "/" +
+                            std::to_string(getIteration() - 1) + "/" +
+                            vars.variable(jv).variable();
+    const auto it = reevalFlagStore_.find(key);
+    if (it == reevalFlagStore_.end()) {
+      continue;
+    }
+    const std::vector<bool> & prevFlagged = it->second;
+    for (size_t loc = 0; loc < obsdb_.nlocs(); ++loc) {
+      if (prevFlagged[loc] && flags_[iv][loc] == myQcFlag) {
+        flags_[iv][loc] = QCflags::pass;
+        accumulator->addTerm(loc, jv, 1);
+      }
+    }
+  }
+
+  const std::vector<size_t> resetCounts = accumulator->computeResult();
+  for (size_t jv = 0; jv < nvars; ++jv) {
+    oops::Log::info() << "FilterID [" << filterId
+                      << "] " << obsdb_.obsname()
+                      << " outerLoop" << getIteration()
+                      << " " << vars.variable(jv).fullName()
+                      << ": reset " << resetCounts[jv]
+                      << " previous rejections for reevaluation" << std::endl;
   }
 }
 

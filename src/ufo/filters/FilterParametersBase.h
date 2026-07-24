@@ -37,6 +37,10 @@ class IdentifierParameters : public oops::Parameters {
   /// Whether to write per-observation flagged results to DiagnosticFlags/<filterId>/<varname>
   /// in the output ioda file. Default: false.
   oops::Parameter<bool> diagnosticFlag{"diagnostic flag", false, this};
+
+  /// If true, reset this filter's previous rejections at the start of each outer loop iteration
+  /// (iteration > 0), allowing re-evaluation with updated H(x).
+  oops::Parameter<bool> reevaluate{"reevaluate", false, this};
 };
 
 /// \brief Parameters controlling the action performed on observations flagged by a filter.

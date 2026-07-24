@@ -8,6 +8,7 @@
 #ifndef UFO_FILTERS_FILTERBASE_H_
 #define UFO_FILTERS_FILTERBASE_H_
 
+#include <map>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -84,6 +85,13 @@ class FilterBase : public ObsProcessorBase {
                             const std::vector<std::vector<bool>> & flagged) const;
   void writeIdentifierDiagnosticFlags(const Variables & vars, size_t nvars,
                                    const std::vector<std::vector<bool>> & flagged) const;
+  void storeReevalFlags(const Variables & vars, size_t nvars,
+                        const std::vector<std::vector<bool>> & flagged) const;
+  void resetPreviousRejections(const Variables & vars, size_t nvars);
+
+  /// Static storage for reevaluation flags. Persists across filter re-creation between
+  /// outer loop iterations. Key: "obsSpaceName/filterId/iteration/variable"
+  static std::map<std::string, std::vector<bool>> reevalFlagStore_;
 
   std::vector<WhereParameters> whereParameters_;
   WhereOperator whereOperator_;
