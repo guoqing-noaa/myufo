@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "oops/util/parameters/OptionalParameter.h"
+#include "oops/util/parameters/Parameter.h"
 #include "ufo/filters/actions/FilterActionBase.h"
 #include "ufo/filters/Variable.h"
 #include "ufo/filters/Variables.h"
@@ -26,12 +27,33 @@ class ObsFilterData;
 
 // -----------------------------------------------------------------------------
 
+/// Parameters for an inflation variable reference with optional iteration suffix.
+class InflationVariableParameters : public oops::Parameters {
+  OOPS_CONCRETE_PARAMETERS(InflationVariableParameters, Parameters)
+ public:
+  /// The variable to use as inflation factor.
+  oops::RequiredParameter<std::string> name{"name", this};
+
+  /// Channel set.
+  oops::Parameter<std::string> channels{"channels", "", this};
+
+  /// If true, the outer loop iteration index is appended to the variable name
+  /// (e.g., "DerivedMetaData/MyVar" becomes "DerivedMetaData/MyVar_0" at iteration 0).
+  oops::Parameter<bool> nameWithIterationSuffix{"name with iteration suffix", false, this};
+
+  /// Construct a Variable from these parameters, optionally applying the iteration suffix.
+  Variable toVariable(int iteration = -1) const;
+};
+
+// -----------------------------------------------------------------------------
+
 class InflateErrorParameters : public FilterActionParametersBase {
   OOPS_CONCRETE_PARAMETERS(InflateErrorParameters, FilterActionParametersBase);
 
  public:
   oops::OptionalParameter<float> inflationFactor{"inflation factor", this};
-  oops::OptionalParameter<Variable> inflationVariable{"inflation variable", this};
+  oops::OptionalParameter<InflationVariableParameters> inflationVariable{
+      "inflation variable", this};
 
   /// This function is overridden to check that either `inflation factor` or `inflation variable`
   /// is specified, but not both.

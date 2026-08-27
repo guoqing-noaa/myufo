@@ -143,6 +143,7 @@ void FilterBase::doFilter() {
   }
 
 // Take actions
+  data_.setIteration(getIteration());
   for (const std::unique_ptr<FilterActionParametersBase> &actionParameters : actionsParameters_) {
     FilterAction action(*actionParameters);
     action.apply(vars, flagged, data_, this->qcFlag(), flags_, obserr_);

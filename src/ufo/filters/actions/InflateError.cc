@@ -9,15 +9,29 @@
 
 #include <algorithm>
 #include <numeric>
+#include <set>
 
 #include "ioda/ObsDataVector.h"
 #include "oops/base/Variables.h"
+#include "oops/util/IntSetParser.h"
 #include "oops/util/Logger.h"
 #include "ufo/filters/ObsFilterData.h"
 #include "ufo/filters/QCflags.h"
 #include "ufo/filters/Variables.h"
 
 namespace ufo {
+
+// -----------------------------------------------------------------------------
+
+Variable InflationVariableParameters::toVariable(int iteration) const {
+  const std::set<int> setChannels = oops::parseIntSet(channels);
+  std::vector<int> vecChannels(setChannels.begin(), setChannels.end());
+  std::string varName = name;
+  if (nameWithIterationSuffix && iteration >= 0) {
+    varName += "_" + std::to_string(iteration);
+  }
+  return Variable(varName, vecChannels);
+}
 
 // -----------------------------------------------------------------------------
 
@@ -45,7 +59,8 @@ InflateError::InflateError(const Parameters_ & parameters)
   : allvars_(), parameters_(parameters) {
   oops::Log::trace() << "InflateError constructor" << std::endl;
   if (parameters_.inflationVariable.value() != boost::none) {
-    allvars_ += *parameters_.inflationVariable.value();
+    // Add the unsuffixed variable for dependency tracking
+    allvars_ += parameters_.inflationVariable.value()->toVariable();
   }
 }
 
@@ -80,7 +95,8 @@ void InflateError::apply(const Variables & vars,
     }
   // If variable is specified
   } else if (parameters_.inflationVariable.value() != boost::none) {
-    const Variable &factorvar = *parameters_.inflationVariable.value();
+    const Variable factorvar =
+        parameters_.inflationVariable.value()->toVariable(data.getIteration());
     ASSERT(factorvar.size() == 1 || factorvar.size() == vars.nvars());
     ioda::ObsDataVector<float> factors(data.obsspace(), factorvar.toOopsObsVariables());
     data.get(factorvar, factors);

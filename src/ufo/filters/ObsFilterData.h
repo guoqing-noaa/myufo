@@ -146,6 +146,10 @@ class ObsFilterData : public util::Printable,
   const GeoVaLs * getGeoVaLs() const {return gvals_;}
   //! Returns reference to ObsDiagnostics
   const ObsDiagnostics * getObsDiags() const {return diags_;}
+  //! Sets the current outer loop iteration index
+  void setIteration(int iteration) { iteration_ = iteration; }
+  //! Returns the current outer loop iteration index (-1 if not set)
+  int getIteration() const { return iteration_; }
  private:
   void print(std::ostream &) const;
   bool hasVector(const std::string &, const std::string &) const;
@@ -161,6 +165,7 @@ class ObsFilterData : public util::Printable,
                      bool skipDerived = false) const;
 
   ioda::ObsSpace & obsdb_;                 //!< ObsSpace associated with this object
+  int iteration_ = -1;                     //!< Current outer loop iteration index
   const GeoVaLs mutable * gvals_;          //!< pointer to GeoVaLs associated with this object
   std::map<std::string, const ioda::ObsVector *> ovecs_;  //!< Associated ObsVectors
   const ObsDiagnostics mutable * diags_;   //!< pointer to ObsDiagnostics associated with object
