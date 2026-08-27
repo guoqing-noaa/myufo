@@ -436,10 +436,16 @@ void assignToVariable(const ufo::Variable &variable,
 }
 
 /// Return the variable to which new values will be assigned.
-ufo::Variable getVariable(const AssignmentParameters &params) {
+/// If \p iteration >= 0 and the assignment has "name with iteration suffix" set to true,
+/// the iteration index is appended to the variable name (e.g., "MyVar" -> "MyVar_0").
+ufo::Variable getVariable(const AssignmentParameters &params, int iteration = -1) {
   const std::set<int> setChannels = oops::parseIntSet(params.channels);
   std::vector<int> vecChannels(setChannels.begin(), setChannels.end());
-  const ufo::Variable variable(params.name, vecChannels);
+  std::string varName = params.name;
+  if (params.nameWithIterationSuffix && iteration >= 0) {
+    varName += "_" + std::to_string(iteration);
+  }
+  const ufo::Variable variable(varName, vecChannels);
   if (variable.group() == "ObsValue") {
     throw eckit::BadValue("Assignment to variables from the ObsValue group is not allowed",
                           Here());
@@ -539,7 +545,7 @@ void VariableAssignment::doFilter() {
 
   // Assign values to successive sets of variables
   for (const AssignmentParameters &assignment : parameters_.assignments.value()) {
-    const ufo::Variable variable = getVariable(assignment);
+    const ufo::Variable variable = getVariable(assignment, getIteration());
     const ioda::ObsDtype dtype = getDataType(assignment.type, variable, obsdb_);
     assignToVariable(variable, dtype, assignment, apply, data_, obsdb_, flags_);
   }

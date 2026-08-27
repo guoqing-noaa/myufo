@@ -70,6 +70,11 @@ class AssignmentParameters : public oops::Parameters {
   /// otherwise an exception will be thrown.
   oops::OptionalParameter<ioda::ObsDtype> type{"type", this};
 
+  /// If true, the outer loop iteration index is appended to the variable name as a suffix
+  /// (e.g., "DerivedData/MyVar" becomes "DerivedData/MyVar_0" at iteration 0,
+  /// "DerivedData/MyVar_1" at iteration 1, etc.).
+  oops::Parameter<bool> nameWithIterationSuffix{"name with iteration suffix", false, this};
+
   /// DateTime epoch required for the conversion of DateTimes to numerical values.
   /// If this is not set, an exception will be thrown.
   oops::OptionalParameter<util::DateTime> epoch{"epoch", this};
