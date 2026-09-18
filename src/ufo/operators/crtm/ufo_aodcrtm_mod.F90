@@ -355,7 +355,7 @@ type(CRTM_RTSolution_type), allocatable :: rts_K(:,:)
 
    ! Deallocate all arrays
    ! ---------------------
-  deallocate(geo, atm, sfc, rts, Options, STAT = alloc_stat)
+   deallocate(geo, atm, sfc, rts, Options, STAT = alloc_stat)
    if ( alloc_stat /= 0 ) THEN
       message = "Error deallocating structure arrays"
       call Display_Message( PROGRAM_NAME, message, FAILURE )
